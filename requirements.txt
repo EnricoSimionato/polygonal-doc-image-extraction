@@ -1,0 +1,11 @@
+# all permissive licenses (BSD, MIT, Apache-2.0); PDFs are rendered with pypdfium2 (PDFium, BSD-3 / Apache-2.0)
+torch>=2.2
+torchvision>=0.17
+timm>=0.9
+safetensors>=0.4
+opencv-python-headless>=4.8
+pypdfium2>=4.20
+pillow>=10.0
+pillow-heif>=0.16
+numpy>=1.24
+flask>=3.0

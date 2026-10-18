@@ -1,0 +1,267 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Polygonal document image extraction</title>
+<style>
+:root { --bg:#f5f6f4; --surface:#fff; --fg:#1c2320; --muted:#5f6a64; --line:#d9dfdb; --acc:#0f766e; --acc-fg:#fff;
+  --hi:#dc2626; --mid:#d97706; --lo:#64748b; --chk:#e6e9e7; }
+@media (prefers-color-scheme: dark) { :root { --bg:#121614; --surface:#1a201d; --fg:#e7ece9; --muted:#9aa59f; --line:#2c3531;
+  --acc:#2dd4bf; --acc-fg:#06201c; --chk:#252c29; color-scheme: dark; } }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--fg); font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
+header { position: sticky; top: 0; z-index: 3; background: var(--bg); border-bottom: 1px solid var(--line);
+  display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; padding: 10px 16px; }
+h1 { font-size: 17px; margin: 0; }
+.pill { font-size: 12px; padding: 2px 8px; border-radius: 99px; border: 1px solid var(--line); color: var(--muted); }
+.pill.ok { color: var(--acc); border-color: var(--acc); }
+button, .btn { font: inherit; border: 1px solid var(--line); background: var(--surface); color: var(--fg); border-radius: 7px;
+  padding: 6px 12px; cursor: pointer; text-decoration: none; display: inline-flex; gap: 6px; align-items: center; }
+.primary { background: var(--acc) !important; color: var(--acc-fg) !important; border-color: var(--acc) !important; }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 7px; overflow: hidden; flex-wrap: wrap; }
+.seg button { border: 0; border-radius: 0; }
+.seg button[aria-pressed="true"] { background: var(--acc); color: var(--acc-fg); }
+.spacer { flex: 1; }
+#drop { margin: 40px auto; max-width: 720px; border: 2px dashed var(--line); border-radius: 14px; padding: 56px 24px;
+  text-align: center; background: var(--surface); cursor: pointer; }
+#drop.over { border-color: var(--acc); }
+#drop h2 { margin: 0 0 6px; font-size: 20px; }
+.muted { color: var(--muted); }
+#progress { display: none; padding: 8px 16px; }
+.bar { height: 6px; background: var(--line); border-radius: 3px; overflow: hidden; }
+.bar i { display: block; height: 100%; background: var(--acc); width: 0; transition: width .3s; }
+#app { display: none; grid-template-columns: 220px 1fr; min-height: calc(100vh - 60px); }
+#pages { border-right: 1px solid var(--line); padding: 10px; overflow-y: auto; max-height: calc(100vh - 60px); position: sticky; top: 60px; }
+.pg { display: grid; grid-template-columns: 56px 1fr; gap: 8px; align-items: center; padding: 6px; border-radius: 8px; cursor: pointer; border: 1px solid transparent; }
+.pg:hover { background: var(--surface); }
+.pg.sel { background: var(--surface); border-color: var(--acc); }
+.pg img { width: 56px; height: 72px; object-fit: contain; background: var(--chk); border-radius: 4px; }
+.pg .lab { font-size: 12px; word-break: break-word; }
+.badge { display: inline-block; font-size: 11px; padding: 0 6px; border-radius: 99px; background: var(--acc); color: var(--acc-fg); }
+.badge.zero { background: var(--line); color: var(--muted); }
+main { padding: 12px 16px 40px; min-width: 0; }
+.tools { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; margin-bottom: 12px; }
+.tools label { display: inline-flex; gap: 6px; align-items: center; }
+.hint { font-size: 12px; color: var(--muted); margin: -4px 0 12px; }
+.cols { display: grid; grid-template-columns: minmax(260px, 40%) 1fr; gap: 16px; align-items: start; }
+.pageview { position: sticky; top: 72px; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 8px; }
+.stage { position: relative; line-height: 0; }
+.stage img { width: 100%; height: auto; border-radius: 4px; }
+.stage svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.stage polygon { cursor: pointer; }
+.cap { font-size: 12px; color: var(--muted); padding-top: 6px; line-height: 1.4; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 220px), 1fr)); gap: 12px; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; display: flex; flex-direction: column; }
+.card.flash { outline: 3px solid var(--acc); }
+.thumb { display: flex; align-items: center; justify-content: center; padding: 8px; min-height: 150px; cursor: zoom-in;
+  background: repeating-conic-gradient(var(--chk) 0% 25%, var(--surface) 0% 50%) 50% / 16px 16px; }
+.thumb img { max-width: 100%; max-height: 260px; display: block; }
+.meta { display: flex; gap: 8px; align-items: center; padding: 8px; font-size: 12px; }
+.meta b { font-weight: 600; }
+.meta a { font-size: 12px; padding: 3px 8px; }
+.empty { padding: 30px; text-align: center; color: var(--muted); border: 1px dashed var(--line); border-radius: 10px; }
+.lb { position: fixed; inset: 0; z-index: 9; background: rgba(0,0,0,.82); display: grid; place-items: center; padding: 16px; cursor: zoom-out; }
+.lb img { max-width: 96vw; max-height: 88vh; background: repeating-conic-gradient(#bbb 0% 25%, #fff 0% 50%) 50% / 16px 16px; }
+.lb p { color: #eee; text-align: center; font-size: 13px; }
+.warn { color: var(--mid); font-size: 12px; }
+@media (max-width: 900px) {
+  #app { grid-template-columns: 1fr; }
+  #pages { position: static; max-height: none; display: flex; gap: 6px; overflow-x: auto; border-right: 0; border-bottom: 1px solid var(--line); }
+  .pg { grid-template-columns: 1fr; min-width: 110px; }
+  .pg img { width: 100%; }
+  .cols { grid-template-columns: 1fr; }
+  .pageview { position: static; }
+}
+</style>
+</head>
+<body>
+<header>
+  <h1>Polygonal document image extraction</h1>
+  <span id="model" class="pill">loading model…</span>
+  <span class="spacer"></span>
+  <button id="again" class="primary" style="display:none">Open more files</button>
+  <input id="file" type="file" multiple accept=".pdf,image/*,.heic" hidden>
+</header>
+
+<div id="drop" role="button" tabindex="0">
+  <h2>Drop a PDF or some images here</h2>
+  <p class="muted">or click to choose them. Multi-page PDFs are split page by page; you can open several files at once.
+  Everything stays on this computer.</p>
+</div>
+
+<div id="progress"><div class="muted" id="ptext">Preparing…</div><div class="bar"><i id="pbar"></i></div></div>
+
+<div id="app">
+  <nav id="pages" aria-label="Pages"></nav>
+  <main>
+    <div class="tools">
+      <span class="seg" role="group" aria-label="Extraction mode">
+        <button data-m="polygon">Polygon</button>
+        <button data-m="filled">Filled rectangle</button>
+        <button data-m="straightened">Straightened</button>
+        <button data-m="perspective">Perspective</button>
+      </span>
+      <label>Min score <input id="thr" type="range" min="0.2" max="0.95" step="0.05"> <b id="thrv"></b></label>
+      <label><input id="outlines" type="checkbox" checked> outlines on page</label>
+      <span class="spacer"></span>
+      <a id="zipPage" class="btn" href="#">Download page (ZIP)</a>
+      <a id="zipAll" class="btn primary" href="#">Download all (ZIP)</a>
+    </div>
+    <p class="hint" id="hint"></p>
+    <div class="cols">
+      <div class="pageview"><div class="stage" id="stage"></div><div class="cap" id="pcap"></div></div>
+      <div class="grid" id="grid"></div>
+    </div>
+  </main>
+</div>
+
+<script>
+const TOKEN = "__TOKEN__";
+const $ = s => document.querySelector(s);
+const HINTS = {
+  polygon: "Exact polygon cut-out, transparent outside the figure.",
+  filled: "Axis-aligned rectangle; the area outside the polygon is filled with the figure's border colour (white if the border is not uniform).",
+  straightened: "Like filled, but the rectangle follows the figure's orientation and is rotated upright.",
+  perspective: "Photos of quadrilateral figures are rectified with a perspective transform; other shapes fall back to straightened."
+};
+const st = { job: null, data: null, page: 0, mode: "filled", thr: 0.4, outlines: true, timer: null };
+try { Object.assign(st, JSON.parse(localStorage.getItem("pdie") || "{}"), {job: null, data: null, page: 0, timer: null}); } catch (e) {}
+const save = () => { try { localStorage.setItem("pdie", JSON.stringify({mode: st.mode, thr: st.thr, outlines: st.outlines})); } catch (e) {} };
+const api = (path, opt = {}) => fetch(path, Object.assign({}, opt, {headers: Object.assign({"X-Token": TOKEN}, opt.headers || {})}));
+const q = `t=${encodeURIComponent(TOKEN)}`;
+const fmt = v => v.toFixed(2);
+const col = s => s >= 0.5 ? "var(--hi)" : s >= 0.3 ? "var(--mid)" : "var(--lo)";
+const esc = t => String(t).replace(/[&<>"]/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;"}[c]));
+const pageUrl = i => `/api/jobs/${st.job}/page/${i}.jpg?${q}`;
+const figUrl = (i, k) => `/api/jobs/${st.job}/figure/${i}/${k}/${st.mode}.png?${q}`;
+
+async function checkModel() {
+  try {
+    const r = await (await api("/api/status")).json();
+    const el = $("#model");
+    if (r.error) { el.textContent = "model error: " + r.error; return; }
+    if (r.ready) { el.textContent = "model ready · CPU"; el.className = "pill ok"; return; }
+  } catch (e) {}
+  setTimeout(checkModel, 800);
+}
+checkModel();
+
+const pick = () => $("#file").click();
+$("#drop").addEventListener("click", pick);
+$("#drop").addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); pick(); } });
+$("#again").addEventListener("click", pick);
+$("#file").addEventListener("change", e => { if (e.target.files.length) upload(e.target.files); e.target.value = ""; });
+for (const ev of ["dragenter", "dragover"]) document.addEventListener(ev, e => { e.preventDefault(); $("#drop").classList.add("over"); });
+for (const ev of ["dragleave", "drop"]) document.addEventListener(ev, e => { e.preventDefault(); $("#drop").classList.remove("over"); });
+document.addEventListener("drop", e => { if (e.dataTransfer.files.length) upload(e.dataTransfer.files); });
+
+// ?job=ID reopens a job of this session (the page can be reloaded); ?mode= picks the extraction mode
+const qs = new URLSearchParams(location.search);
+if (qs.get("mode") && HINTS[qs.get("mode")]) st.mode = qs.get("mode");
+if (/^[0-9a-f]{16}$/.test(qs.get("job") || "")) { st.job = qs.get("job"); $("#drop").style.display = "none"; $("#progress").style.display = "block"; setTimeout(poll, 0); }
+
+async function upload(files) {
+  const fd = new FormData();
+  for (const f of files) fd.append("files", f, f.name);
+  $("#drop").style.display = "none";
+  $("#progress").style.display = "block";
+  $("#ptext").textContent = `Uploading ${files.length} file(s)…`;
+  $("#pbar").style.width = "0";
+  const r = await api("/api/jobs", {method: "POST", body: fd});
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) { $("#ptext").textContent = j.error || "upload failed"; return; }
+  st.job = j.id; st.data = null; st.page = 0;
+  history.replaceState(null, "", `?job=${j.id}`);
+  poll();
+}
+
+async function poll() {
+  clearTimeout(st.timer);
+  const d = await (await api(`/api/jobs/${st.job}`)).json();
+  const first = !st.data || !st.data.pages.length;
+  st.data = d;
+  $("#ptext").innerHTML = d.status === "error" ? `Error: ${esc(d.error)}` :
+    d.status === "done" ? `Done: ${d.done} page(s) from ${esc(d.files.join(", "))}` :
+    `Extracting: page ${d.done} of ${d.total ?? "…"}` + (d.total === null ? " (splitting pages)" : "");
+  if (d.warnings.length) $("#ptext").innerHTML += `<div class="warn">${d.warnings.map(esc).join("<br>")}</div>`;
+  $("#pbar").style.width = d.total ? `${100 * d.done / d.total}%` : "3%";
+  if (d.pages.length) {
+    $("#app").style.display = "grid";
+    $("#again").style.display = "inline-flex";
+    renderPages();
+    if (first) renderPage();
+  }
+  if (d.status === "running") st.timer = setTimeout(poll, 700);
+}
+
+const visible = pg => pg.figures.map((f, k) => Object.assign({k}, f)).filter(f => f.score >= st.thr);
+
+function renderPages() {
+  $("#pages").innerHTML = st.data.pages.map((pg, i) => {
+    const n = visible(pg).length;
+    return `<div class="pg${i === st.page ? " sel" : ""}" data-i="${i}" tabindex="0" title="${esc(pg.label)}">
+      <img loading="lazy" src="${pageUrl(i)}" alt="">
+      <div class="lab">${esc(pg.label)}<br><span class="badge${n ? "" : " zero"}">${n} image${n === 1 ? "" : "s"}</span></div></div>`;
+  }).join("");
+  document.querySelectorAll(".pg").forEach(el => {
+    const go = () => { st.page = +el.dataset.i; renderPages(); renderPage(); };
+    el.addEventListener("click", go);
+    el.addEventListener("keydown", e => { if (e.key === "Enter") go(); });
+  });
+}
+
+function renderPage() {
+  const pg = st.data.pages[st.page];
+  if (!pg) return;
+  const figs = visible(pg);
+  const polys = !st.outlines ? "" : figs.map((f, n) =>
+    `<polygon data-n="${n}" points="${f.poly.map(p => p.join(",")).join(" ")}" fill="${col(f.score)}" fill-opacity=".08" stroke="${col(f.score)}" stroke-width="3" vector-effect="non-scaling-stroke"><title>image ${n + 1} · score ${fmt(f.score)}</title></polygon>`).join("");
+  $("#stage").innerHTML = `<img src="${pageUrl(st.page)}" alt="${esc(pg.label)}"><svg viewBox="0 0 ${pg.w} ${pg.h}" preserveAspectRatio="none">${polys}</svg>`;
+  $("#pcap").textContent = `${pg.label} · ${figs.length} image(s) with score ≥ ${fmt(st.thr)} (${pg.figures.length} candidates) · ${pg.seconds} s`;
+  $("#stage").querySelectorAll("polygon").forEach(p => p.addEventListener("click", () => {
+    const c = document.querySelector(`.card[data-n="${p.dataset.n}"]`);
+    if (c) { c.scrollIntoView({behavior: "smooth", block: "center"}); c.classList.add("flash"); setTimeout(() => c.classList.remove("flash"), 1200); }
+  }));
+  $("#grid").innerHTML = figs.length ? figs.map((f, n) => `<div class="card" data-n="${n}">
+      <div class="thumb" data-src="${figUrl(st.page, f.k)}"><img loading="lazy" src="${figUrl(st.page, f.k)}" alt="extracted image ${n + 1}"></div>
+      <div class="meta"><b style="color:${col(f.score)}">${fmt(f.score)}</b><span class="muted">image ${n + 1}</span><span class="spacer"></span>
+      <a class="btn" download href="${figUrl(st.page, f.k)}">PNG</a></div></div>`).join("")
+    : `<div class="empty">No image with score ≥ ${fmt(st.thr)} on this page.${pg.figures.length ? " Lower the minimum score to see the uncertain candidates." : ""}</div>`;
+  document.querySelectorAll(".thumb").forEach(el => el.addEventListener("click", () => {
+    const lb = document.createElement("div");
+    lb.className = "lb";
+    const img = document.createElement("img"); img.src = el.dataset.src;
+    const p = document.createElement("p"); p.textContent = "click or press Esc to close";
+    const box = document.createElement("div"); box.append(img, p); lb.append(box);
+    lb.addEventListener("click", () => lb.remove());
+    document.body.appendChild(lb);
+  }));
+  const zq = `${q}&mode=${st.mode}&min_score=${st.thr}`;
+  $("#zipPage").href = `/api/jobs/${st.job}/zip?${zq}&page=${st.page}`;
+  $("#zipAll").href = `/api/jobs/${st.job}/zip?${zq}`;
+  $("#hint").textContent = HINTS[st.mode];
+}
+
+document.querySelectorAll(".seg button").forEach(b => {
+  b.setAttribute("aria-pressed", String(b.dataset.m === st.mode));
+  b.title = HINTS[b.dataset.m];
+  b.addEventListener("click", () => {
+    st.mode = b.dataset.m; save();
+    document.querySelectorAll(".seg button").forEach(x => x.setAttribute("aria-pressed", String(x === b)));
+    if (st.data) renderPage();
+  });
+});
+$("#thr").value = st.thr; $("#thrv").textContent = fmt(st.thr);
+$("#thr").addEventListener("input", e => { st.thr = +e.target.value; $("#thrv").textContent = fmt(st.thr); save(); if (st.data) { renderPages(); renderPage(); } });
+$("#outlines").checked = st.outlines;
+$("#outlines").addEventListener("change", e => { st.outlines = e.target.checked; save(); if (st.data) renderPage(); });
+document.addEventListener("keydown", e => {
+  if (e.key === "Escape") document.querySelector(".lb")?.remove();
+  if (!st.data || document.querySelector(".lb") || e.target.tagName === "INPUT") return;
+  if (e.key === "ArrowDown" || e.key === "ArrowRight") { st.page = Math.min(st.page + 1, st.data.pages.length - 1); renderPages(); renderPage(); }
+  if (e.key === "ArrowUp" || e.key === "ArrowLeft") { st.page = Math.max(st.page - 1, 0); renderPages(); renderPage(); }
+});
+</script>
+</body>
+</html>
