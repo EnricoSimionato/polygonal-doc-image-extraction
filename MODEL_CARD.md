@@ -24,8 +24,8 @@ about **283,000 images**:
   floor plans, technical drawings, screenshots, figures with callouts (labels and leader lines drawn directly on the
   page), groups of images linked by arrows;
 - the rest are drawn, cropped and transformed from **19,444 openly licensed images**: Open Images (CC BY 2.0),
-  Wikimedia Commons (public domain, CC0, CC BY, CC BY-SA), Unsplash (Unsplash License). Per-asset sources, authors and
-  licenses are in [attribution/training-assets.csv](attribution/training-assets.csv).
+  Wikimedia Commons (public domain, CC0, CC BY, CC BY-SA), Unsplash (Unsplash License). Sources and license shares
+  are in [ATTRIBUTION.md](ATTRIBUTION.md); the training pages and images are not distributed.
 
 Target polygons follow fixed rules so that they are learnable: photos are outlined exactly; complex figures (charts,
 diagrams, drawings) get a constant 2 pt margin and include their titles, legends, labels and callouts; captions

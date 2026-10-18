@@ -3,7 +3,13 @@
 Extract the images, charts, diagrams and drawings contained in **PDF pages and phone photos of documents**, as
 **polygons** instead of rectangles, with a small model that runs on a normal laptop CPU.
 
-![The app on a synthetic sample page: detected figures outlined on the page, extracted images on the right](docs/screenshot-filled.png)
+| Rectangles | Free-form shapes | Figures with callouts | Phone photos |
+|:---:|:---:|:---:|:---:|
+| <img src="docs/examples/rectangles.jpg" width="200" alt="A gallery of rectangular photos, each outlined"> | <img src="docs/examples/cutouts.jpg" width="200" alt="Irregular cut-out images wrapped by text, outlined by their own shape"> | <img src="docs/examples/callouts.jpg" width="200" alt="A rotated floor plan with labels and leader lines, outlined together with its callouts"> | <img src="docs/examples/photo.jpg" width="200" alt="A page photographed at an angle, with the figure outlined as a quadrilateral"> |
+| one polygon per image, even when they touch | the outline follows the shape, not its box | labels and leader lines stay with the figure | perspective and uneven light |
+
+<sub>Predictions of PolyDETR v0 on synthetic pages (threshold 0.40). The pages are generated, the photos in them are
+public domain, CC0 or Unsplash.</sub>
 
 Most layout detectors return axis-aligned boxes. Real documents are not that tidy: pages are photographed at an
 angle, figures are cut-outs that wrap around text, drawings come with arrows and labels around them. PolyDETR, the
@@ -32,7 +38,7 @@ box.
 4. A **minimum score** slider (default **0.40**) decides which detections are shown; lower it to see the uncertain
    candidates. Every image can be downloaded as PNG, or all of them as a ZIP, per page or for the whole upload.
 
-![The same page in polygon mode](docs/screenshot-polygon.png)
+![The app: detected figures outlined on the page, extracted images on the right](docs/screenshot-filled.png)
 
 ## Quick start
 
@@ -55,8 +61,8 @@ model weights (93 MB) from the [v0 release](https://github.com/EnricoSimionato/p
 checking them against [`weights/SHA256SUMS`](weights/SHA256SUMS). Later runs start in a few seconds and open the
 browser by themselves. Close the terminal window to stop the app.
 
-Try it with [`examples/sample-synthetic.pdf`](examples/sample-synthetic.pdf), three synthetic pages with charts,
-diagrams, floor plans and technical drawings.
+Try it with [`examples/sample-synthetic.pdf`](examples/sample-synthetic.pdf), three synthetic pages: a photo
+gallery, cut-out images wrapped by text and a floor plan with callouts.
 
 ## Privacy and security
 
@@ -106,7 +112,7 @@ app/polydetr/     model code (inference)
 app/rectify_figure.py   rectangular completion of extracted polygons
 weights/          model configuration and checksum (the weights come from the release)
 examples/         a synthetic sample PDF
-attribution/      sources and licenses of the images used to generate the training data
+docs/             images used in this README
 ```
 
 ## Versions
@@ -120,6 +126,6 @@ attribution/      sources and licenses of the images used to generate the traini
 - **Code**: [Apache License 2.0](LICENSE).
 - **Model weights** (`polydetr-v0.safetensors`): [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/), because
   part of the images used to synthesise the training pages are under share-alike licenses. See
-  [MODEL_CARD.md](MODEL_CARD.md) and [ATTRIBUTION.md](ATTRIBUTION.md).
+  [MODEL_CARD.md](MODEL_CARD.md) and [ATTRIBUTION.md](ATTRIBUTION.md). No training data is distributed here.
 - The ResNet-18 backbone was initialised from [`timm/resnet18.a1_in1k`](https://huggingface.co/timm/resnet18.a1_in1k)
   (Apache-2.0).

@@ -1,8 +1,9 @@
 # Attribution
 
-The training pages of PolyDETR are synthesised from the following openly licensed image collections. The full list,
-one row per image with license, author, title and source URL, is in
-[attribution/training-assets.csv](attribution/training-assets.csv) (19,444 images).
+The training pages of PolyDETR are synthesised from 19,444 images taken from the openly licensed collections below.
+This repository does not distribute the training data, neither the images nor the generated pages; it only states
+what was used. The per-image list (license, author, title and source URL of every image) is kept by the author and
+available on request.
 
 | Source | Images | License |
 |---|---|---|
